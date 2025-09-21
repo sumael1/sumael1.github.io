@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Corazón y girasoles de partículas</title>
+  <style>
+    :root{--bg:#0b0f1a;--accent:#ff4d6d}
+    html,body{height:100%;margin:0;font-family:Inter, system-ui, Arial, sans-serif;background:var(--bg);color:#fff;overflow:hidden}
+    .container{height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:24px;position:relative;z-index:2}
+
+    .title{
+      font-size:28px;font-weight:700;letter-spacing:1px;margin-bottom:12px;
+      background: linear-gradient(90deg,#ff8aa0,#ff4d6d,#ffb1c4);
+      -webkit-background-clip:text;background-clip:text;color:transparent;
+      text-shadow:0 8px 24px rgba(255,77,109,0.08);
+      animation:float 4s ease-in-out infinite;user-select:none;
+    }
+    @keyframes float{0%{transform:translateY(0)}50%{transform:translateY(-6px)}100%{transform:translateY(0)}}
+
+    .wrap{width:100%;max-width:980px;display:flex;align-items:center;justify-content:center;position:relative}
+    canvas{display:block;width:100%;height:70vh;max-height:720px;background:transparent;border-radius:16px;cursor:pointer}
+
+    footer{position:fixed;left:12px;bottom:12px;color:rgba(255,255,255,0.45);font-size:13px;z-index:2}
+
+    .modal{
+      position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);
+      display:flex;align-items:center;justify-content:center;
+      visibility:hidden;opacity:0;transition:opacity .28s ease,visibility .28s ease;
+      z-index:12;
+    }
+    .modal.active{visibility:visible;opacity:1}
+
+    /* Modal con dos columnas */
+    .modal-content{
+      width:900px;max-width:94vw;height:520px;max-height:86vh;
+      background:rgba(255,255,255,0.03);
+      border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,0.65);
+      padding:12px;display:flex;flex-direction:row;align-items:stretch;justify-content:center;
+      animation:popIn .36s cubic-bezier(.2,.9,.2,1);overflow:hidden;
+      gap:14px;
+    }
+
+    .carousel{flex:1;position:relative;overflow:hidden;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,0.45)}
+    .carousel img{position:absolute;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .8s ease;border-radius:12px}
+    .carousel img.active{opacity:1}
+
+    .message-box{
+      flex:1;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;
+      background:linear-gradient(180deg, rgba(255,154,158,0.06), rgba(250,208,196,0.04));
+      border-radius:12px;padding:14px;box-shadow:0 12px 30px rgba(0,0,0,0.35);
+    }
+    .message-box h3{margin:0 0 10px;font-size:18px;text-align:center;color:#fff}
+    .message-scroll{flex:1;overflow:auto;padding-right:8px;color:#fff;font-size:15px;line-height:1.4}
+    .message-scroll p{margin:0 0 8px}
+
+    @keyframes popIn{0%{transform:scale(.96);opacity:0}100%{transform:scale(1);opacity:1}}
+
+    .hint{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:5;color:rgba(255,255,255,0.92);font-weight:600;pointer-events:none}
+
+    .message-scroll::-webkit-scrollbar{width:8px}
+    .message-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:8px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="title">Toca el corazón</div>
+    <div class="wrap">
+      <canvas id="c" aria-label="Corazón interactivo"></canvas>
+      <div class="hint">amorcito</div>
+    </div>
+  </div>
+  <footer>creado por Samuel Calderón</footer>
+
+  <div id="modal" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-content" id="modalContent">
+      <!-- Carrusel -->
+      <div class="carousel" id="carousel">
+        <img src="Imagen1.jpg" class="active" alt="Imagen 1"/>
+        <img src="Imagen2.jpg" alt="Imagen 2"/>
+        <img src="Imagen3.jpg" alt="Imagen 3"/>
+        <img src="Imagen4.jpg" alt="Imagen 4"/>
+        <img src="Imagen5.jpg" alt="Imagen 5"/>
+      </div>
+
+      <!-- Mensaje -->
+      <div class="message-box">
+        <h3>💖 PARA MI CIELITO 💖</h3>
+        <div class="message-scroll">
+          <p>Mi vida, en este 21 de septiembre quiero decirte lo mucho que te amo y lo hermosos que fueron mis días a tu lado. Han sido casi tres años de caídas y levantadas, de lágrimas y sonrisas, pero siempre juntos, siempre de la mano.</p>
+          <p>Aunque la vida nos puso pruebas, tú y yo supimos ser más fuertes que cualquier obstáculo. Hoy quiero que sepas que te amo con cada parte de mí, y que no importa lo que pase, siempre serás mi refugio, mi sueño y mi lugar favorito.</p>
+          <p>Gracias por ser mi todo; contigo quiero caminar cada estación de mi vida. 💖</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🎶 Audio -->
+  <audio id="bgAudio" src="audio.mp3" loop></audio>
+
+  <script>
+    const canvas=document.getElementById('c');
+    const ctx=canvas.getContext('2d');
+    const modal=document.getElementById('modal');
+    const modalContent=document.getElementById('modalContent');
+    const bgAudio=document.getElementById('bgAudio');
+
+    let W,H,DPR;
+    function resize(){DPR=window.devicePixelRatio||1;W=canvas.clientWidth;H=canvas.clientHeight;canvas.width=Math.floor(W*DPR);canvas.height=Math.floor(H*DPR);ctx.setTransform(DPR,0,0,DPR,0,0)}
+    window.addEventListener('resize',()=>{resize();generateHeartParticles()});resize();
+
+    function heartPoint(t,scale=12){const x=16*Math.pow(Math.sin(t),3);const y=13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t);return{x:x*scale,y:-y*scale}};
+
+    class Particle{constructor(x,y,hue){this.ox=x;this.oy=y;this.x=x;this.y=y;this.phase=Math.random()*Math.PI*2;this.size=1+Math.random()*2;this.hue=hue;this.baseSpeed=0.006+Math.random()*0.006;this.speed=this.baseSpeed*1.45;this.radius=2+Math.random()*2;this.pulse=0}update(mouseInfluence=0){this.phase+=this.speed;this.pulse+=0.03;const pulseRadius=Math.sin(this.pulse)*1.6;const ox=this.ox+mouseInfluence*0.2;this.x=ox+Math.cos(this.phase)*(this.radius+pulseRadius);this.y=this.oy+Math.sin(this.phase)*(this.radius+pulseRadius)}draw(ctx,cx,cy){ctx.beginPath();ctx.fillStyle=`hsla(${this.hue},85%,60%,0.92)`;ctx.arc(cx+this.x,cy+this.y,this.size,0,Math.PI*2);ctx.fill()}}
+    const particles=[];function generateHeartParticles(count=700){particles.length=0;const scale=Math.min(Math.max(W,300),H)/40;for(let i=0;i<count;i++){const t=Math.random()*Math.PI*2;const p=heartPoint(t,scale);const r=Math.random();const x=p.x*(0.5+0.5*r);const y=p.y*(0.5+0.5*r);const hue=330+Math.random()*40;particles.push(new Particle(x,y,hue))}}generateHeartParticles();
+
+    class Sunflower{constructor(cx,cy,radius){this.cx=cx;this.cy=cy;this.radius=radius;this.petals=[];this.center=[];this.init()}init(){const petalCount=18;for(let i=0;i<petalCount;i++){const angle=(i/petalCount)*Math.PI*2;for(let j=0;j<22;j++){const r=this.radius*0.6+Math.random()*this.radius*0.4;const x=Math.cos(angle)*r+(Math.random()-0.5)*6;const y=Math.sin(angle)*r+(Math.random()-0.5)*6;this.petals.push({x,y,hue:45+Math.random()*20})}}for(let i=0;i<90;i++){const a=Math.random()*Math.PI*2;const r=Math.random()*this.radius*0.32;this.center.push({x:Math.cos(a)*r,y:Math.sin(a)*r,hue:30+Math.random()*10})}}draw(ctx){ctx.save();ctx.translate(this.cx,this.cy);for(const p of this.petals){ctx.beginPath();ctx.fillStyle=`hsl(${p.hue},92%,55%)`;ctx.arc(p.x,p.y,2,0,Math.PI*2);ctx.fill()}for(const c of this.center){ctx.beginPath();ctx.fillStyle=`hsl(${c.hue},60%,30%)`;ctx.arc(c.x,c.y,2,0,Math.PI*2);ctx.fill()}ctx.restore()}}
+    const sunflowers=[];function spawnSunflower(){const x=Math.random()*W;const y=Math.random()*H;const r=36+Math.random()*28;sunflowers.push(new Sunflower(x,y,r));if(sunflowers.length>5) sunflowers.shift()}setInterval(spawnSunflower,3800);
+
+    let mouseX=0, mouseY=0;
+    canvas.addEventListener('mousemove',e=>{const rect=canvas.getBoundingClientRect();mouseX=e.clientX-rect.left;mouseY=e.clientY-rect.top});
+    canvas.addEventListener('touchmove',e=>{const t=e.touches[0];if(t){const rect=canvas.getBoundingClientRect();mouseX=t.clientX-rect.left;mouseY=t.clientY-rect.top}} ,{passive:true});
+
+    function draw(){ctx.clearRect(0,0,W,H);for(const f of sunflowers) f.draw(ctx);const cx=W/2,cy=H/2-10;const mx=(mouseX-cx)||0;const my=(mouseY-cy)||0;const md=Math.sqrt(mx*mx+my*my);const influence=Math.max(0,60-md);for(const p of particles){p.update(influence);p.draw(ctx,cx,cy)}requestAnimationFrame(draw)}requestAnimationFrame(draw);
+
+    function isInsideHeart(clientX,clientY){const rect=canvas.getBoundingClientRect();const x=clientX-rect.left;const y=clientY-rect.top;const cx=rect.width/2,cy=rect.height/2-10;const dx=x-cx,dy=y-cy;return Math.sqrt(dx*dx+dy*dy)<70}
+
+    function openModal(){
+      modal.classList.add('active');
+      bgAudio.currentTime=0;
+      bgAudio.play();
+    }
+    function closeModal(){
+      modal.classList.remove('active');
+      bgAudio.pause();
+    }
+
+    canvas.addEventListener('click',e=>{if(isInsideHeart(e.clientX,e.clientY)){openModal()}});
+    canvas.addEventListener('touchstart',e=>{const t=e.touches[0]; if(t && isInsideHeart(t.clientX,t.clientY)) openModal();});
+
+    modal.addEventListener('click',closeModal);
+    modalContent.addEventListener('click',e=>e.stopPropagation());
+    window.addEventListener('keydown',e=>{if(e.key==='Escape') closeModal()});
+
+    // Carrusel
+    const carousel=document.getElementById('carousel');
+    const slides=carousel.querySelectorAll('img');
+    let current=0;
+    function showSlide(i){slides.forEach((img,idx)=>{img.classList.toggle('active',idx===i)})}
+    setInterval(()=>{if(modal.classList.contains('active')){current=(current+1)%slides.length;showSlide(current)}},3000);
+  </script>
+</body>
+</html>
